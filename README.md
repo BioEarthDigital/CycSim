@@ -51,7 +51,7 @@ cd test && bash hh.sh
 `CycSim` takes a genome assembly file and a trained model file as input to generate simulated reads in BAM format.
 
 ```sh
-../target/release/cycsim sim -t 60 -d 30 model.cy ref.fa -o sim.bam
+./target/release/cycsim sim -t 60 -d 30 model.cy ref.fa -o sim.bam
 ```
 
 ***Note:*** If you need to simulate more than 50× coverage (i.e., more than the depth used for training), it is recommended to add the `-n` option. This will introduce additional random errors and help avoid oversampling artifacts.
@@ -61,7 +61,7 @@ cd test && bash hh.sh
 `CycSim` can be trained to build an error model from real sequencing data. It takes a genome assembly file and a read mapping file in BAM format as input (sorting is not required) and produces a trained model file.
 
 ```sh
-../target/release/cycsim train -t 60 -r nanopore read.bam ref.fa -o model.cy
+./target/release/cycsim train -t 60 -r nanopore read.bam ref.fa -o model.cy
 ```
 
 Use `./target/release/cycsim -h` to see options.
