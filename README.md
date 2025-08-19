@@ -27,7 +27,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 ```
 
 ##### Download and install
-
+中文用户请参考[这里](https://mirrors.tuna.tsinghua.edu.cn/help/crates.io-index/)设置清华源加速
 ```sh
 git clone https://github.com/BioEarthDigital/CycSim.git
 cd CycSim && cargo build --release
