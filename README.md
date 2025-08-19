@@ -1,6 +1,6 @@
 # CycSim - a context-based long-read simulator
 
-Errors in long-read sequencing data are often context-dependent, with certain bases more prone to specific errors. Most existing simulators introduce errors randomly and thus fail to accurately capture these error patterns, only roughly simulating overall error rates. `CycSim` addresses this by modeling errors based on k-mer context, enabling more realistic simulation of sequencing error characteristics.
+Long-read sequencing data contain context-dependent errors, where certain bases are more likely to be misread depending on their surrounding sequence. Most existing simulators introduce errors randomly, which overlooks these error biases and only approximates the overall error rate. `CycSim` takes a different approach by modeling errors in a k-mer–dependent manner, enabling more realistic and biologically accurate error simulation.
 
 `CycSim` is easy to train and supports all types of long-read sequencing data. It currently provides pre-trained models for BGI CycloneSEQ, PacBio HiFi, and Oxford Nanopore Q20 data. Users can also quickly train their own custom models using a BAM file of reads aligned to a reference genome.
 
@@ -85,13 +85,13 @@ Use `./target/release/cycsim -h` to see options.
 1. `CycSim` currently supports training and simulation only in whole-genome sequencing (WGS) scenarios.
 
 ### <a name="benchmark"></a>Benchmarking
-1. `CycSim` achieves a closer match to the empirical error rate distribution.
+1. `CycSim` introduces an error rate distribution that is consistent with real sequencing data.
 <img src="./images/mapping-identity.png" alt="mapping-identity" width="70%"/>
 
-2. `CycSim` captures error preferences that closely resemble those observed in the original dataset.
+2. `CycSim` introduces an error bias comparable to that observed in real sequencing data.
 <img src="./images/error-preference.png" alt="error-preference" width="70%"/>
 
-3. `CycSim` reproduces the position-dependent variation in error rates observed in real sequencing data.
+3. `CycSim` introduces a position-dependent error distribution that is consistent with real sequencing data.
 <img src="./images/position-dependent.png" alt="position-dependent" width="70%"/>
 
 ### Star
