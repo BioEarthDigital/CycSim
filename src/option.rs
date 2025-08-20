@@ -37,6 +37,7 @@ pub struct Option {
     pub temperature: f64,        //-e
     pub disable_chimeric: bool,  //-c
     pub disable_unaligned: bool, //-u
+    pub global_error_rate: bool, //-g
 }
 
 impl Option {
@@ -243,6 +244,13 @@ impl Option {
 						.action(ArgAction::SetTrue),
 				)
 				.arg(
+					Arg::new("global_error_rate")
+						.short('g')
+						.long("global_error_rate")
+						.help("use a global, context-independent error rate instead of modeling context-dependent error distributions.")
+						.action(ArgAction::SetTrue),
+				)
+				.arg(
 					Arg::new("out")
 						.short('o')
 						.long("out")
@@ -355,6 +363,7 @@ impl Option {
                     noise: args.remove_one::<f64>("noise").unwrap().max(1e-6),
                     disable_chimeric: args.get_flag("disable_chimeric"),
                     disable_unaligned: args.get_flag("disable_unaligned"),
+                    global_error_rate: args.get_flag("global_error_rate"),
                     ..Default::default()
                 };
 
@@ -421,6 +430,7 @@ impl Default for Option {
             temperature: 0.,
             disable_chimeric: false,
             disable_unaligned: false,
+            global_error_rate: false,
         }
     }
 }

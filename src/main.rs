@@ -640,6 +640,7 @@ fn build_kmer_features<const N: usize>(
 fn build_kmer_identity_distribution(
     errors_rate: &[(f32, f32)],
     use_len: bool,
+    global_error_rate: bool,
 ) -> Vec<Option<(Vec<u32>, WeightedIndex<u32>)>> {
     let rounded_key = |x: f32| (x * 10000.0).round() as u32;
 
@@ -654,12 +655,12 @@ fn build_kmer_identity_distribution(
         KMER_ERROR_BIN
     };
 
-    let bin_num = ((kmer_max_error / bin).ceil() as usize) + 1;
+    let bin_num = if global_error_rate { 1 } else { ((kmer_max_error / bin).ceil() as usize) + 1 };
 
     let mut binned = vec![HashMap::default(); bin_num];
 
     for &(kmer_error, identity) in errors_rate {
-        let bin_idx = (kmer_error / bin).floor() as usize;
+        let bin_idx = if global_error_rate { 0 } else { (kmer_error / bin).floor() as usize };
         let rounded_identity = rounded_key(identity);
         *binned[bin_idx].entry(rounded_identity).or_insert(0) += 1;
     }
@@ -1109,7 +1110,7 @@ fn main() {
         let error_transits = &build_distribution(error_transits, vec![0, 4]);
         // let match_lens = &build_distribution(match_lens, vec![]);
         let kmer_features = &build_kmer_features(kmer_features, errors);
-        let kmer_identitys = &build_kmer_identity_distribution(errors_rate, read_type == "hifi");
+        let kmer_identitys = &build_kmer_identity_distribution(errors_rate, read_type == "hifi", opt.global_error_rate);
 
         thread::scope(|work| {
             let (ou_s, ou_r) = bounded(opt.thread + 2);
@@ -1192,6 +1193,7 @@ fn main() {
                                     opt.temperature,
                                     average_error,
                                     read_type == "hifi",
+                                    opt.global_error_rate,
                                     &mut seq_buffer,
                                     &mut cigar_buffer,
                                     &mut qual_buffer,

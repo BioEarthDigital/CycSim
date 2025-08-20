@@ -358,11 +358,14 @@ pub fn sim_aligned_seq(
     opt_temperature: f64,
     average_error: f64,
     use_len: bool,
+    global_error_rate: bool,
     seq: &mut Vec<u8>,
     cigar: &mut Vec<u8>,
     qual: &mut Vec<u8>,
 ) -> usize {
-    let bin_idx = if use_len {
+    let bin_idx = if global_error_rate {
+        0
+    }else if use_len {
         (len as f32 / LEN_ERROR_BIN).floor() as usize
     } else {
         let kmer_identity = estimate_kmer_identity(&ref_seq[..(len + ksize).min(ref_seq.len())], kmer_dists, ksize);
