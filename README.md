@@ -91,7 +91,8 @@ Use `./target/release/cycsim -h` to see options.
 2. `CycSim` introduces an error bias comparable to that observed in real sequencing data.
 <img src="./images/error-preference.png" alt="error-preference" width="70%"/>
 
-3. `CycSim` introduces a position-dependent error distribution that is consistent with real sequencing data.
+3. `CycSim` introduces a position-dependent error distribution that is consistent with real sequencing data.    
+***Note:*** If you need a global, context-independent error rate, enable `--global_error_rate` in the training stage.
 <img src="./images/position-dependent.png" alt="position-dependent" width="70%"/>
 
 ### Star
