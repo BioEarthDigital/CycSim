@@ -42,8 +42,11 @@ cd test && bash hh.sh
 #### Download pre-trained models
 ```sh
 # BGI CycloneSEQ model
+wget https://zenodo.org/records/16908702/files/cyclone_hd118_mode.v1.0.cy
 # PacBio HiFi model
+wget https://zenodo.org/records/16908702/files/hifi_model.v1.0.cy
 # Oxford Nanopore Q20 data model
+wget https://zenodo.org/records/16908702/files/ont_q20_model.v1.0.cy
 ```
 
 ### <a name="usage"></a>General usage
