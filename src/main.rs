@@ -1305,7 +1305,7 @@ fn main() {
                 let (mut count, mut bases) = (0, 0);
                 let header = create_bam_header(ref_seqs);
                 let mut writer = Writer::from_stdout(&header, bam::Format::Bam).unwrap();
-                writer.set_threads(opt.thread.max(4)).unwrap();
+                writer.set_threads(opt.thread.min(4)).unwrap();
                 while let Ok(sim_reads) = ou_r.recv() {
                     for read in sim_reads.iter() {
                         writer.write(read).expect("Failed to write read!");
