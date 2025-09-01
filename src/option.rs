@@ -232,7 +232,6 @@ impl Option {
 				.arg(
 					Arg::new("disable_chimeric")
 						.short('c')
-						.hide(true)
 						.long("disable_chimeric")
 						.help("disable simulation of chimeric reads.")
 						.action(ArgAction::SetTrue),

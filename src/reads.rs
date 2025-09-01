@@ -1,13 +1,47 @@
 #![allow(dead_code)]
 
+use rustc_hash::FxHashMap as HashMap;
 use rust_htslib::bam::{
     Record,
     header::{Header, HeaderRecord},
-    record::{Cigar, CigarString},
+    record::{Aux, Cigar, CigarString},
 };
 use std::fmt::Write;
 
 const READS_CAP: usize = 1000;
+
+type Read<'a> = (
+    &'a [u8],     // seq
+    &'a [u8],     // cigar_chars
+    &'a [u8],     // qual
+    &'a str,      // name
+    usize,        // start
+    usize,        // end
+    u32,          // unaligned_left_len
+    u32,          // aligned_len
+    u32,          // unaligned_right_len
+    i32,          // tid
+    bool,         // is_positive
+    usize,        // chimeric
+    u64,          // thread
+    usize,        // index
+);
+
+type ChiRead<'a> = (
+    usize,        // seq_start
+    usize,        // cigar_start
+    &'a str,      // name
+    usize,        // start
+    usize,        // end
+    u32,          // unaligned_left_len
+    u32,          // aligned_len
+    u32,          // unaligned_right_len
+    i32,          // tid
+    bool,         // is_positive
+    usize,        // chimeric
+    u64,          // thread
+    usize,        // index
+);
 
 pub struct SimReads {
     pub reads: Vec<Record>,
@@ -20,35 +54,21 @@ impl SimReads {
         }
     }
 
-    pub fn push(
-        &mut self,
-        seq: &[u8],
-        cigar_chars: &[u8],
-        qual: &mut Vec<u8>,
-        name: &str,
-        start: usize,
-        end: usize,
-        unaligned_left_len: u32,
-        aligned_len: u32,
-        unaligned_right_len: u32,
-        tid: i32,
-        is_positive: bool,
-        chimeric: usize,
-        thread: u64,
-        index: usize,
-        qname_buffer: &mut String,
-    ) {
+    pub fn push(&mut self, args: Read, qname_buffer: &mut String) {
+        let (seq, cigar_chars, qual, name, start, end, unaligned_left_len, 
+            aligned_len, unaligned_right_len, tid, is_positive, chimeric, 
+            thread, index) = args;
+
         let flag: u16 = if is_positive { 0 } else { 0x10 };
+
         let qname = {
             qname_buffer.clear();
-            write!(qname_buffer, "{:03}_{index}_{name}_{start}_{end}_{unaligned_left_len}_{aligned_len}_{unaligned_right_len}_{}_{chimeric}", thread, if is_positive {0} else {1}).unwrap();
+            write!(qname_buffer, "{:03}_{index}_{name}_{start}_{end}_{unaligned_left_len}_{aligned_len}_{unaligned_right_len}_{}_{chimeric}", 
+                thread, if is_positive {0} else {1}).unwrap();
             qname_buffer.as_bytes()
         };
 
-        let cigars = build_cigar_ops(cigar_chars);
-        if qual.is_empty() {
-            qual.resize(seq.len(), 255);
-        }
+        let cigars = build_cigar_ops(cigar_chars, 0, 0);
 
         let mut record = Record::new();
         record.set(qname, Some(&CigarString(cigars)), seq, qual);
@@ -58,6 +78,107 @@ impl SimReads {
         record.set_flags(flag);
 
         self.reads.push(record);
+    }
+
+    pub fn push_chimeric(&mut self, args: &[ChiRead], ref_names: &[(String, Vec<u8>)], 
+        all_seq: &mut [u8], all_cigar: &mut [u8], all_qual: &mut [u8], qname_buffer: &mut String)
+    {
+        qname_buffer.clear();
+        let mut primary_index = 0;
+        for (i, arg) in args.iter().enumerate() {
+            let (_, _, name, start, end, unaligned_left_len, aligned_len, unaligned_right_len,
+                 _, is_positive, chimeric, thread, index) = arg;
+            if i > 0 {
+                qname_buffer.push('|');
+            }
+            write!(qname_buffer, 
+                "{:03}_{index}_{name}_{start}_{end}_{unaligned_left_len}_{aligned_len}_{unaligned_right_len}_{}_{chimeric}", 
+                thread, if *is_positive {0} else {1}
+            ).unwrap();
+
+            if *aligned_len > args[primary_index].6 {
+                primary_index = i;
+            }
+        }
+
+        //htslib qname < 254
+        let qname_max_len = qname_buffer.len().min(254);
+        let qname = &qname_buffer.as_bytes()[..qname_max_len];
+
+        let mut sa_entries: Vec<String> = Vec::with_capacity(args.len());
+        for (i, arg) in args.iter().enumerate() {
+            let (seq_start, cigar_start, _, start, _, _, _, _,
+                 tid, is_positive, _, _, _) = arg;
+            let (seq_end, cigar_end) = if i == args.len() - 1 { 
+                (all_seq.len(), all_cigar.len())
+            }else {
+                let next_args = &args[i+1];
+                (next_args.0, next_args.1)
+            };//exclude
+
+            let (start_clip, end_clip) = if *is_positive {
+                (*seq_start, all_seq.len() - seq_end)
+            }else {
+                (all_seq.len() - seq_end, *seq_start)
+            };
+
+            if !*is_positive {
+                rev_comp_inplace(&mut all_seq[*seq_start..seq_end]);
+                all_qual[*seq_start..seq_end].reverse();
+            }
+
+            let (cigar_str, nm) = build_sa_cigar_ops(&all_cigar[*cigar_start..cigar_end], start_clip, end_clip);
+            let strand = if *is_positive { '+' } else { '-' };
+            
+            // format: rname,pos,strand,CIGAR,mapQ,NM;
+            let entry = format!("{},{},{strand},{cigar_str},60,{nm};", 
+                ref_names[*tid as usize].0, 
+                start + 1);
+            sa_entries.push(entry);
+        }
+
+        if !args[primary_index].9 {
+            rev_comp_inplace(all_seq);
+            all_qual.reverse();
+        }
+
+        for (i, arg) in args.iter().enumerate() {
+            let (seq_start, cigar_start, _, start, _, _ul, _, _,
+                 tid, is_positive, _, _, _) = arg;
+            let (seq_end, cigar_end) = if i == args.len() - 1 { 
+                (all_seq.len(), all_cigar.len())
+            }else {
+                let next_args = &args[i+1];
+                (next_args.0, next_args.1)
+            };//exclude
+
+            let (start_clip, end_clip) = if *is_positive {
+                (*seq_start, all_seq.len() - seq_end)
+            }else {
+                (all_seq.len() - seq_end, *seq_start)
+            };
+            let cigars = build_cigar_ops(&all_cigar[*cigar_start..cigar_end], start_clip, end_clip);
+
+            let flag: u16 = if *is_positive { 0 } else { 0x10 };
+            let flag = if i == primary_index { flag } else { flag | 0x800 };
+            
+            let mut record = Record::new();
+            record.set(qname, Some(&CigarString(cigars)), all_seq, all_qual);
+            record.set_tid(*tid);
+            record.set_pos(*start as i64);
+            record.set_mapq(60);
+            record.set_flags(flag);
+
+            let mut sa_tag = String::with_capacity(1024);
+            for (j, entry) in sa_entries.iter().enumerate() {
+                if j != i {
+                    sa_tag.push_str(entry);
+                }
+            }
+            record.push_aux(b"SA", Aux::String(&sa_tag)).unwrap();
+
+            self.reads.push(record);
+        }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -129,9 +250,25 @@ fn to_cigar(op: u8, len: u32) -> Cigar {
     }
 }
 
-fn build_cigar_ops(cigar_chars: &[u8]) -> Vec<Cigar> {
+fn build_cigar_ops(cigar_chars: &[u8], start_clip: usize, end_clip: usize) -> Vec<Cigar> {
     let mut cigars = Vec::with_capacity(1024);
-    let iter = cigar_chars.iter();
+
+    let mut start = 0;
+    while cigar_chars[start] == b'S' {
+        start += 1;
+    }
+
+    let n = cigar_chars.len();
+    let mut end = n;
+    while cigar_chars[end - 1] == b'S' {
+        end -= 1;
+    }
+
+    if start + start_clip > 0 {
+        cigars.push(to_cigar(b'S', (start + start_clip) as u32));
+    }
+
+    let iter = cigar_chars[start..end].iter();
 
     let mut iter = iter.peekable();
     while let Some(&op) = iter.next() {
@@ -146,8 +283,56 @@ fn build_cigar_ops(cigar_chars: &[u8]) -> Vec<Cigar> {
         }
         cigars.push(to_cigar(op, count));
     }
+
+    if end_clip + n - end > 0 {
+        cigars.push(to_cigar(b'S', (end_clip + n - end) as u32));
+    }
+
     cigars.shrink_to_fit();
     cigars
+}
+
+fn build_sa_cigar_ops(cigar_chars: &[u8], start_clip: usize, end_clip: usize) -> (String, usize) {
+    let mut start = 0;
+    while cigar_chars[start] == b'S' {
+        start += 1;
+    }
+    let n = cigar_chars.len();
+    let mut end = n;
+    while cigar_chars[end - 1] == b'S' {
+        end -= 1;
+    }
+
+    let mut counts: HashMap<u8, usize> = HashMap::default();
+    let mut order: Vec<u8> = Vec::with_capacity(8);
+
+    for &op in &cigar_chars[start..end] {
+        if !counts.contains_key(&op) {
+            order.push(op);
+        }
+        *counts.entry(op).or_insert(0) += 1;
+    }
+
+    let mut nm = 0;
+    let mut result = String::with_capacity(64);
+
+    if start + start_clip > 0 {
+        write!(result, "{}S", start + start_clip).unwrap();
+    }
+
+    for &op in &order {
+        let count = counts[&op];
+        if op != b'='{
+            nm += count;
+        }
+        write!(result, "{count}{}", op as char).unwrap();
+    }
+
+    if end_clip + n - end > 0 {
+        write!(result, "{}S", end_clip + n - end).unwrap();
+    }
+
+    (result, nm)
 }
 
 pub fn create_bam_header(seqs: &[(String, Vec<u8>)]) -> Header {

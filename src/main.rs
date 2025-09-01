@@ -1133,30 +1133,37 @@ fn main() {
                         let total_bases = (ref_len as f64 * depth) as usize / opt.thread + 1;
                         let mut sim_bases = 0;
                         let pos_dist = Uniform::new(0, ref_len).unwrap();
+                        let mut chimeric_reads = Vec::with_capacity(4);
+                        let (mut chimeric, mut aligned_len, mut unaligned_left_len) = (0, 0, 0);
+                        let (mut unaligned_right_len, mut start_pos, mut is_positive) = (0, 0, true);
                         while sim_bases <= total_bases {
-                            let aligned_len = emp_aligned_len.sample(
-                                &mut rng,
-                                if opt.median_len == 0 {
-                                    None
-                                } else {
-                                    Some(opt.median_len)
-                                },
-                            );
-                            let unaligned_left_len = emp_unaligned_left_len.sample(&mut rng, None);
-                            let unaligned_right_len =
-                                emp_unaligned_right_len.sample(&mut rng, None);
-                            let start_pos = pos_dist.sample(&mut rng) + (ksize >> 1);
-                            let is_positive = strand_dist.sample(&mut rng);
-                            let chimeric = chimeric_dist.sample(&mut rng);
-                            let total_len =
-                                (unaligned_left_len + aligned_len + unaligned_right_len) as usize;
+                            if chimeric != 4 || chimeric_reads.is_empty(){//random chimeric
+                                aligned_len = emp_aligned_len.sample(
+                                    &mut rng,
+                                    if opt.median_len == 0 {
+                                        None
+                                    } else {
+                                        Some(opt.median_len)
+                                    },
+                                );
+                                unaligned_left_len = emp_unaligned_left_len.sample(&mut rng, None);
+                                unaligned_right_len = emp_unaligned_right_len.sample(&mut rng, None);
+                                start_pos = pos_dist.sample(&mut rng) + (ksize >> 1);
+                                if chimeric == 0 && !opt.disable_chimeric {
+                                    chimeric = chimeric_dist.sample(&mut rng).min(3);
+                                }
+                                is_positive = strand_dist.sample(&mut rng);
+                            }else{//self chimeric
+                                is_positive = !is_positive;
+                                chimeric = 2;
+                            }
+
+                            let total_len = (unaligned_left_len + aligned_len + unaligned_right_len) as usize;
                             if start_pos + total_len >= ref_len {
                                 continue;
                             }
 
-                            seq_buffer.clear();
-                            cigar_buffer.clear();
-                            qual_buffer.clear();
+                            let (seq_start, cigar_start) = (seq_buffer.len(), cigar_buffer.len());
 
                             let mut end_pos = start_pos;
                             if !opt.disable_unaligned
@@ -1220,7 +1227,11 @@ fn main() {
                                 || aligned_len < opt.min_len
                                 || seq_buffer.len() > opt.max_len as usize
                                 || aligned_len > opt.max_len
-                            {
+                            {   
+                                seq_buffer.clear();
+                                cigar_buffer.clear();
+                                qual_buffer.clear();
+                                chimeric_reads.clear();
                                 continue;
                             }
 
@@ -1228,31 +1239,61 @@ fn main() {
                             // std::str::from_utf8(&seq_buffer).unwrap(),
                             // std::str::from_utf8(&cigar_buffer).unwrap(),
                             // std::str::from_utf8(&qual_buffer.iter().map(|x| x+33).collect::<Vec<u8>>()).unwrap());
+                            if chimeric > 0 {
+                                chimeric_reads.push((
+                                    seq_start,
+                                    cigar_start,
+                                    ref_name.as_str(),
+                                    start_pos,
+                                    end_pos,
+                                    unaligned_left_len,
+                                    aligned_len,
+                                    unaligned_right_len,
+                                    tid as i32,
+                                    is_positive,
+                                    chimeric,
+                                    i,
+                                    bam_index),
+                                );
 
-                            sim_reads.push(
-                                &seq_buffer,
-                                &cigar_buffer,
-                                &mut qual_buffer,
-                                ref_name,
-                                start_pos,
-                                end_pos,
-                                unaligned_left_len,
-                                aligned_len,
-                                unaligned_right_len,
-                                tid as i32,
-                                is_positive,
-                                chimeric,
-                                i,
-                                bam_index,
-                                &mut bam_buffer,
-                            );
+                                if chimeric_reads.len() >= chimeric {
+                                    sim_reads.push_chimeric(&chimeric_reads, ref_seqs, &mut seq_buffer, &mut cigar_buffer, &mut qual_buffer, &mut bam_buffer);
+                                    sim_bases += seq_buffer.len();
+                                    seq_buffer.clear();
+                                    cigar_buffer.clear();
+                                    qual_buffer.clear();
+                                    chimeric_reads.clear();
+                                    chimeric = 0;
+                                }
+                            }else{
+                                sim_reads.push(
+                                    (&seq_buffer,
+                                    &cigar_buffer,
+                                    &qual_buffer,
+                                    ref_name,
+                                    start_pos,
+                                    end_pos,
+                                    unaligned_left_len,
+                                    aligned_len,
+                                    unaligned_right_len,
+                                    tid as i32,
+                                    is_positive,
+                                    chimeric,
+                                    i,
+                                    bam_index),
+                                    &mut bam_buffer,
+                                );
+                                sim_bases += seq_buffer.len();
+                                seq_buffer.clear();
+                                cigar_buffer.clear();
+                                qual_buffer.clear();
+                            }
+
+                            bam_index += 1;
                             if sim_reads.is_full() {
                                 ou_s.send(sim_reads).unwrap();
                                 sim_reads = SimReads::new();
                             }
-
-                            bam_index += 1;
-                            sim_bases += seq_buffer.len();
                         }
                     }
                     ou_s.send(sim_reads).unwrap();
@@ -1330,7 +1371,9 @@ fn main() {
                             ));
                             let (dif_chimeric, self_chimeric) =
                                 analyze_chimeric_feature(aligned_regions, 30);
-                            chimeric_count[dif_chimeric.min(3)] += 1;
+                            if dif_chimeric != 0 {
+                                chimeric_count[dif_chimeric.min(3)] += 1;
+                            }
                             chimeric_count[4] += self_chimeric;
                         }
                     } else {
