@@ -232,5 +232,62 @@ mod fileio {
     }
 }
 
+mod updater {
+    use reqwest::blocking::Client;
+
+    fn latestver(owner: &str, repo: &str) -> Option<String> {
+        let url = format!(
+            "https://api.github.com/repos/{}/{}/releases/latest",
+            owner, repo
+        );
+
+        let client = Client::builder()
+            .timeout(std::time::Duration::from_secs(1))
+            .build()
+            .ok()?; 
+        let resp = client
+            .get(&url)
+            .header("User-Agent", "rust-update-checker")
+            .send()
+            .ok()?
+            .text()
+            .ok()?;
+        
+        let key = "\"tag_name\"";
+        let pos = resp.find(key)?; 
+        let rest = &resp[pos + key.len()..];
+
+        let colon_pos = rest.find(':')?;
+        let rest = &rest[colon_pos + 1..];
+
+        let first_quote = rest.find('"')?;
+        let rest = &rest[first_quote + 1..];
+
+        let second_quote = rest.find('"')?;
+        let tag = &rest[..second_quote];
+
+        Some(tag.trim_start_matches('v').to_string())
+    }
+
+    pub fn update_checker(owner: &str, repo: &str) {
+        let ver = env!("CARGO_PKG_VERSION");
+        if let Some(latest) = latestver(owner, repo) && latest != ver {
+            eprintln!(
+                "\x1b[35m Please update to the latest version: {}, current version: {} \x1b[0m",
+                latest, ver
+            );
+        }
+    }
+
+    pub fn update_checker_default() {
+        let owner = env!("GIT_OWNER");
+        let repo = env!("GIT_REPO");
+        if owner != "unknown" && repo != "unknown" {
+            update_checker(owner, repo);
+        }
+    }
+}
+
 pub use fileio::FileIO;
 pub use resource::{IntervalTimer, resource_str};
+pub use updater::update_checker_default;

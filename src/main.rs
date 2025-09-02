@@ -26,7 +26,7 @@ use std::{
 static GLOBAL: MiMalloc = MiMalloc;
 
 mod mlib;
-use mlib::{FileIO, resource_str};
+use mlib::{FileIO, resource_str, update_checker_default};
 
 mod option;
 use option::Option as Opt;
@@ -961,6 +961,7 @@ fn estimate_kmer_identitys<const N: usize>(
 }
 
 fn main() {
+    update_checker_default();
     let opt = &Opt::from_args();
     rayon::ThreadPoolBuilder::new()
         .num_threads(opt.thread)

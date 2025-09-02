@@ -10,8 +10,6 @@ use std::{
     path::Path,
 };
 
-const VERSION: &str = include_str!(concat!(env!("OUT_DIR"), "/VERSION"));
-
 #[derive(Clone, Debug)]
 pub struct Option {
     pub cmd: String,
@@ -48,7 +46,7 @@ impl Option {
     pub fn from_args() -> Option {
         let opt = Option::default();
         let args = Command::new("CycSim")
-			.version(VERSION)
+			.version(env!("VERSION"))
 			.about("A context-based long-read simulator")
 			.arg_required_else_help(true)
 			.subcommand(

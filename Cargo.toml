@@ -1,6 +1,6 @@
 [package]
 name = "cycsim"
-version = "1.0.1"
+version = "1.0.2"
 edition = "2024"
 
 [dependencies]
@@ -23,6 +23,7 @@ path-absolutize = "3.1.1"
 rand = "0.9.1"
 rand_distr = "0.5.1"
 rayon = "1.10.0"
+reqwest =  { version = "0.12", features = ["blocking"] }
 rust-htslib = "0.49.0"
 rustc-hash = "2.1.1"
 zstd = { version = "0.13", features = ["zstdmt"] }
