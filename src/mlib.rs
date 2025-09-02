@@ -290,4 +290,4 @@ mod updater {
 
 pub use fileio::FileIO;
 pub use resource::{IntervalTimer, resource_str};
-pub use updater::update_checker_default;
+pub use updater::update_checker;
