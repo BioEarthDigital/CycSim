@@ -6,7 +6,7 @@ use rust_htslib::bam::{
     header::{Header, HeaderRecord},
     record::{Aux, Cigar, CigarString},
 };
-use std::fmt::Write;
+use std::{env, fmt::Write, path::Path};
 
 const READS_CAP: usize = 1000;
 
@@ -349,5 +349,27 @@ pub fn create_bam_header(seqs: &[(String, Vec<u8>)]) -> Header {
         header.push_record(&sq_record);
     }
 
+    add_pg_record(header)
+}
+
+pub fn add_pg_record(mut header: Header) -> Header{
+    let mut args: Vec<String> = env::args().collect();
+    let prog_name = args
+        .get(0)
+        .and_then(|s| Path::new(s).file_name().map(|os| os.to_string_lossy().to_string()))
+        .unwrap_or_else(|| "unknown".to_string());
+
+    if let Some(first) = args.first_mut() {
+        *first = prog_name.clone(); // 替换成 basename
+    }
+
+    let cmdline = args.join(" ");
+
+    let mut pg_record = HeaderRecord::new(b"PG");
+    pg_record.push_tag(b"ID", &prog_name);
+    pg_record.push_tag(b"PN", &prog_name);
+    pg_record.push_tag(b"VN", env!("VERSION"));
+    pg_record.push_tag(b"CL", &cmdline);
+    header.push_record(&pg_record);
     header
 }
