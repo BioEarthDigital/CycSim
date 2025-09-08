@@ -7,12 +7,12 @@ fn set_git_version(){
 
     let child = Command::new("git").args(["describe", "--always"]).output();
     match child {
-        Ok(child) => {
+        Ok(child) if child.status.success() => {
             let buf = String::from_utf8(child.stdout).expect("failed to read stdout");
             println!("cargo:rustc-env=VERSION={version}-{buf}");
         }
-        Err(err) => {
-            eprintln!("`git describe` err: {err}");
+        _ => {
+            eprintln!("`git describe` failed, using CARGO_PKG_VERSION version");
             println!("cargo:rustc-env=VERSION={version}");
         }
     }
