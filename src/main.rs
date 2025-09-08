@@ -1159,6 +1159,10 @@ fn main() {
                                 chimeric = 2;
                             }
 
+                            if !is_positive {
+                                std::mem::swap(&mut unaligned_left_len, &mut unaligned_right_len);
+                            }
+
                             let total_len = (unaligned_left_len + aligned_len + unaligned_right_len) as usize;
                             if start_pos + total_len >= ref_len {
                                 continue;
