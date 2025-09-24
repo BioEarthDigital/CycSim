@@ -1094,7 +1094,7 @@ fn main() {
         let depth = if opt.base > 0 {
             opt.base as f64 / ref_seqs.iter().map(|x| x.1.len()).sum::<usize>() as f64
         } else {
-            opt.depth as f64
+            opt.depth
         };
         info!("Model loading completed, kmer error rate: {global_has_error:.4}");
 

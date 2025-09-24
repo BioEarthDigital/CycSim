@@ -26,7 +26,7 @@ pub struct Option {
     pub batch_size: usize, //-b
     pub read_type: String, //-r
 
-    pub depth: usize,            //-d
+    pub depth: f64,              //-d
     pub base: usize,             //-D
     pub median_len: u32,         //-l
     pub min_len: u32,            //-m
@@ -170,9 +170,9 @@ impl Option {
 					Arg::new("depth")
 						.short('d')
 						.long("depth")
-						.value_name("INT")
+						.value_name("FLOAT")
 						.default_value(opt.depth.to_string())
-						.value_parser(value_parser!(usize))
+						.value_parser(value_parser!(f64))
 						.help("approximate total coverage depth to simulate."),
 				)
 				.arg(
@@ -356,7 +356,7 @@ impl Option {
                         .expect("Missing sequences file!"),
                     thread: args.remove_one::<usize>("thread").unwrap(),
                     seed: args.remove_one::<u64>("seed").unwrap(),
-                    depth: args.remove_one::<usize>("depth").unwrap(),
+                    depth: args.remove_one::<f64>("depth").unwrap(),
                     noise: args.remove_one::<f64>("noise").unwrap().max(1e-6),
                     disable_chimeric: args.get_flag("disable_chimeric"),
                     disable_unaligned: args.get_flag("disable_unaligned"),
@@ -418,7 +418,7 @@ impl Default for Option {
             map_len: 2000,
             map_fra: 0.8,
             batch_size: 1000000000,
-            depth: 30,
+            depth: 30.,
             base: 0,
             median_len: 0,
             min_len: 1000,
