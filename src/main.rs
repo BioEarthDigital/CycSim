@@ -54,7 +54,6 @@ const TRANSIT_WIN: usize = 10;
 const DELETION_CIGAR: usize = 0b01; //same as edlib cigar
 const INSERTION_CIGAR: usize = 0b10; //same as edlib cigar
 const MISMATCH_CIGAR: usize = 0b11; //same as edlib cigar
-const KMER_ERROR_BIN: f32 = 0.01;
 const LEN_ERROR_BIN: f32 = 1000.;
 
 fn read_seqs_with_tid(path: &str, header: &HeaderView) -> Vec<Vec<u8>> {
@@ -641,6 +640,7 @@ fn build_kmer_identity_distribution(
     errors_rate: &[(f32, f32)],
     use_len: bool,
     global_error_rate: bool,
+    kmer_error_bin: f32,
 ) -> Vec<Option<(Vec<u32>, WeightedIndex<u32>)>> {
     let rounded_key = |x: f32| (x * 10000.0).round() as u32;
 
@@ -652,7 +652,7 @@ fn build_kmer_identity_distribution(
     let bin = if use_len {
         LEN_ERROR_BIN
     } else {
-        KMER_ERROR_BIN
+        kmer_error_bin
     };
 
     let bin_num = if global_error_rate { 1 } else { ((kmer_max_error / bin).ceil() as usize) + 1 };
@@ -686,6 +686,11 @@ fn build_kmer_identity_distribution(
         }
     }
     identity_samplers
+}
+
+fn magnitude(error: f64) -> f32 {
+    let exp = error.log10().floor() as i32;
+    10f32.powi(exp)
 }
 
 fn read2kmer(
@@ -1101,6 +1106,7 @@ fn main() {
         // output_kmer_features(kmer_features, errors);
 
         let average_error = *global_has_error;
+        let kmer_error_bin = magnitude(average_error);
         let strand_dist = &Bernoulli::new(*strand_fra).unwrap();
         let chimeric_dist = &WeightedIndex::new(chimeric_fra).unwrap();
         let global_error_dist =
@@ -1111,7 +1117,7 @@ fn main() {
         let error_transits = &build_distribution(error_transits, vec![0, 4]);
         // let match_lens = &build_distribution(match_lens, vec![]);
         let kmer_features = &build_kmer_features(kmer_features, errors);
-        let kmer_identitys = &build_kmer_identity_distribution(errors_rate, read_type == "hifi", opt.global_error_rate);
+        let kmer_identitys = &build_kmer_identity_distribution(errors_rate, read_type == "hifi", opt.global_error_rate, kmer_error_bin);
 
         thread::scope(|work| {
             let (ou_s, ou_r) = bounded(opt.thread + 2);
@@ -1204,6 +1210,7 @@ fn main() {
                                     kmer_identitys,
                                     opt.temperature,
                                     average_error,
+                                    kmer_error_bin,
                                     read_type == "hifi",
                                     opt.global_error_rate,
                                     &mut seq_buffer,

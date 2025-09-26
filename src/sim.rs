@@ -1,5 +1,5 @@
 use crate::{
-    COUNTER_BITS, DELETION_CIGAR, ErrorPattern, INSERTION_CIGAR, KMER_ERROR_BIN, KmerDist,
+    COUNTER_BITS, DELETION_CIGAR, ErrorPattern, INSERTION_CIGAR, KmerDist,
     LEN_ERROR_BIN, MISMATCH_CIGAR, TRANSIT_WIN, UNALIGNED_ERROR_RATE, estimate_kmer_identity,
     iter2kmer, qual::identity_to_qual,
 };
@@ -357,6 +357,7 @@ pub fn sim_aligned_seq(
     kmer_identitys: &[Option<(Vec<u32>, WeightedIndex<u32>)>],
     opt_temperature: f64,
     average_error: f64,
+    kmer_error_bin: f32,
     use_len: bool,
     global_error_rate: bool,
     seq: &mut Vec<u8>,
@@ -369,7 +370,7 @@ pub fn sim_aligned_seq(
         (len as f32 / LEN_ERROR_BIN).floor() as usize
     } else {
         let kmer_identity = estimate_kmer_identity(&ref_seq[..(len + ksize).min(ref_seq.len())], kmer_dists, ksize);
-        (kmer_identity / KMER_ERROR_BIN).floor() as usize
+        (kmer_identity / kmer_error_bin).floor() as usize
     };
     let expected_identity = kmer_identitys
         .get(bin_idx)
