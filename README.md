@@ -77,7 +77,7 @@ Use `./target/release/cycsim -h` to see options.
 
    ***Note:*** Please ask questions on the issue page first. They are also helpful to other users.
 #### Contact
-   
+
    For additional help, please send an email to hujiang\_at\_genomics\_dot\_cn.
 
 <!-- ### <a name="cite"></a>Citation -->
@@ -100,3 +100,12 @@ Use `./target/release/cycsim -h` to see options.
 
 ### Star
 You can track updates by tab the **Star** button on the upper-right corner at the [github page](https://github.com/BioEarthDigital/CycSim).
+
+
+
+### Citaion
+
+Preprint:
+
+Context-aware simulation enables systematic optimization of long-read mapping parameters, Jiang Hu, Dongming Fang, Xin Jin, Chentao Yang, bioRxiv 2025.12.04.692264; doi: https://doi.org/10.64898/2025.12.04.692264
+
