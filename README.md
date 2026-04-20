@@ -1,3 +1,5 @@
+[![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat)](http://bioconda.github.io/recipes/cycsim/README.html)
+[![Conda Version](https://img.shields.io/conda/v/bioconda/CycSim)](https://anaconda.org/bioconda/cycsim)
 # CycSim - a context-based long-read simulator
 
 Long-read sequencing data contain context-dependent errors, where certain bases are more likely to be misread depending on their surrounding sequence. Most existing simulators introduce errors randomly, which overlooks these error biases and only approximates the overall error rate. `CycSim` takes a different approach by modeling errors in a k-mer–dependent manner, enabling more realistic and biologically accurate error simulation.
@@ -13,11 +15,11 @@ Long-read sequencing data contain context-dependent errors, where certain bases 
 - [Benchmarking](#benchmark)
 
 ### <a name="install"></a>Installation
-<!-- 
+
 #### Installing from bioconda
 ```sh
-conda install nextpolish2
-``` -->
+conda install bioconda::cycsim
+```
 #### Installing from source
 ##### Dependencies
 
