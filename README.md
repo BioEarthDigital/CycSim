@@ -109,5 +109,5 @@ You can track updates by tab the **Star** button on the upper-right corner at th
 
 Preprint:
 
-Context-aware simulation enables systematic optimization of long-read mapping parameters, Jiang Hu, Dongming Fang, Xin Jin, Chentao Yang, bioRxiv 2025.12.04.692264; doi: https://doi.org/10.64898/2025.12.04.692264
+Jiang Hu, Dongming Fang, Xin Jin, Chentao Yang, Context-aware simulation enables systematic optimization of long-read mapping parameters, GigaScience, 2026;, giag079, https://doi.org/10.1093/gigascience/giag079
 
