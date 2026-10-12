@@ -1235,15 +1235,17 @@ fn main() {
                                 );
                             }
 
-                            if seq_buffer.len() < opt.min_len as usize
+                            if seq_buffer.len() - seq_start < opt.min_len as usize
+                                || cigar_buffer.len() == cigar_start
                                 || aligned_len < opt.min_len
                                 || seq_buffer.len() > opt.max_len as usize
                                 || aligned_len > opt.max_len
-                            {   
+                            {
                                 seq_buffer.clear();
                                 cigar_buffer.clear();
                                 qual_buffer.clear();
                                 chimeric_reads.clear();
+                                chimeric = 0;
                                 continue;
                             }
 
